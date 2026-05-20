@@ -4,7 +4,7 @@
 
 A lightweight, report-oriented **outside-in exposure assessment** tool for enterprise security leaders. PROBE helps answer what an attacker, vendor, customer, or external observer can see about an organization from the public internet—without exploitation or internal scanning.
 
-> **Positioning:** Executive-readable risk reporting from safe public checks—not a penetration test or full attack-surface management (ASM) platform.
+> **Positioning:** Executive-readable risk reporting from safe public checknot a penetration test or full attack-surface management (ASM) platform.
 
 ## Features
 
@@ -73,9 +73,9 @@ Findings should be validated by the organization before remediation decisions. D
 
 Edit defaults in `config.py` (request timeouts, subdomain wordlist, rate limits, risk thresholds).
 
-## Course context
+## Documentation
 
-Developed as a **MICS / Cyber-295 capstone** project. Week 3 MVP scope documentation may live in a separate course repo alongside the full technical specification.
+- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) — MVP outcomes, scope, personas, limitations, and success criteria (no course-week framing)
 
 ## License
 
