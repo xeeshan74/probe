@@ -193,12 +193,12 @@ foreach ($issue in $issues) {
             -ContentType "application/json"
         
         $count++
-        Write-Host "✓ Created: $($issue.title)" -ForegroundColor Green
+        Write-Host "Created: $($issue.title)" -ForegroundColor Green
     }
     catch {
-        Write-Host "✗ Failed: $($issue.title)" -ForegroundColor Red
+        Write-Host "Failed: $($issue.title)" -ForegroundColor Red
         Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
-Write-Host "`nCompleted! Created $count / $($issues.Count) issues" -ForegroundColor Cyan
+Write-Host "Completed! Created $count / $($issues.Count) issues" -ForegroundColor Cyan
