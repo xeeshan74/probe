@@ -31,6 +31,9 @@ python -m streamlit run app.py
 
 Open **http://localhost:8501** in your browser.
 
+## AWS mock
+moto_server -p 5000
+
 ## Usage workflow
 
 1. **New assessment** — Enter company name and primary domain.
