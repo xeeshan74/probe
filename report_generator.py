@@ -2,9 +2,27 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from typing import Any, Dict, List
 
 from storage import get_assessment, list_assets, list_findings
+
+from markdown_pdf import MarkdownPdf, Section
+
+def convert_markdown_to_pdf(assessment_id: str) -> bytes:
+
+    markdown_content = build_markdown_report(assessment_id)
+
+    # 2. Initialize the PDF builder
+    pdf = MarkdownPdf()
+
+    # 3. Add the content as a document section
+    pdf.add_section(Section(markdown_content))
+
+    buffer = BytesIO()
+    pdf.save(buffer)
+
+    return buffer.getvalue()
 
 
 def build_markdown_report(assessment_id: str) -> str:
