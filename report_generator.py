@@ -8,7 +8,7 @@ from storage import get_assessment, list_assets, list_findings
 
 from markdown_pdf import MarkdownPdf, Section
 
-def convert_markdown_to_pdf(assessment_id: str) -> None:
+def convert_markdown_to_pdf(assessment_id: str) -> bytes:
 
     markdown_content = build_markdown_report(assessment_id)
 
@@ -19,8 +19,7 @@ def convert_markdown_to_pdf(assessment_id: str) -> None:
     pdf.add_section(Section(markdown_content))
 
     # 4. Save the completed PDF
-    pdf.save("output.pdf")
-    print("PDF created successfully!")
+    return pdf.build_pdf()
 
 
 def build_markdown_report(assessment_id: str) -> str:
