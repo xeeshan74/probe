@@ -6,6 +6,22 @@ from typing import Any, Dict, List
 
 from storage import get_assessment, list_assets, list_findings
 
+from markdown_pdf import MarkdownPdf, Section
+
+def convert_markdown_to_pdf(assessment_id: str) -> None:
+
+    markdown_content = build_markdown_report(assessment_id)
+
+    # 2. Initialize the PDF builder
+    pdf = MarkdownPdf()
+
+    # 3. Add the content as a document section
+    pdf.add_section(Section(markdown_content))
+
+    # 4. Save the completed PDF
+    pdf.save("output.pdf")
+    print("PDF created successfully!")
+
 
 def build_markdown_report(assessment_id: str) -> str:
     a = get_assessment(assessment_id)
