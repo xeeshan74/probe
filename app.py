@@ -23,7 +23,7 @@ from charts import (
     top_findings_ranked_table,
     top_findings_use_table,
 )
-from report_generator import build_markdown_report
+from report_generator import build_markdown_report, convert_markdown_to_pdf
 from storage import (
     assessment_summary_metrics,
     delete_assessment_cascade,
@@ -239,4 +239,11 @@ with tab_dash:
             data=md,
             file_name=f"probe_report_{current_id}.md",
             mime="text/markdown",
+        )
+        pdf = convert_markdown_to_pdf(current_id)
+        st.download_button(
+            "Download PDF report",
+            data=pdf,
+            file_name=f"probe_report_{current_id}.pdf",
+            mime="application/pdf",
         )

@@ -6,3 +6,4 @@ plotly>=5.18.0
 pandas>=2.0.0
 moto[server]==5.0.26
 validators>=0.34.0
+markdown-pdf>=0.1.0
