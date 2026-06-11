@@ -15,7 +15,7 @@ def test_my_model_save():
 
 def get_mock_s3_client():
     # This method assumes that the moto mock is running at 5000
-    # This can be done with `moto_server s3 -p 5000` in the terminal
+    # This can be done with `moto_server -p 5000` in the terminal
     s3_client = boto3.client( "s3", endpoint_url="http://localhost:5000", aws_access_key_id="mock", aws_secret_access_key="mock" )
     return s3_client
 
@@ -43,3 +43,5 @@ def test_get_mock_s3_client_connects_to_moto():
     response = client.list_buckets()
 
     assert "Buckets" in response
+
+# test_get_mock_s3_client_connects_to_moto()
