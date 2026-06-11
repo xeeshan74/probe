@@ -241,10 +241,9 @@ with tab_dash:
             mime="text/markdown",
         )
         pdf = convert_markdown_to_pdf(current_id)
-        with open("output.pdf", "rb") as f:
-            st.download_button(
-                "Download PDF report",
-                data=f,
-                file_name=f"probe_report_{current_id}.pdf",
-                mime="application/pdf",
-            )
+        st.download_button(
+            "Download PDF report",
+            data=pdf,
+            file_name=f"probe_report_{current_id}.pdf",
+            mime="application/pdf",
+        )
