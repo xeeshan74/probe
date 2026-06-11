@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import streamlit as st
 
 from assessment_controller import (
@@ -18,6 +20,8 @@ from charts import (
     fig_risk_gauge,
     fig_severity_counts,
     fig_top_findings,
+    top_findings_ranked_table,
+    top_findings_use_table,
 )
 from report_generator import build_markdown_report
 from storage import (
@@ -33,15 +37,33 @@ from storage import (
 st.set_page_config(page_title="PROBE for Executives", layout="wide")
 
 init_db()
+
+if "selected_assessment_id" not in st.session_state:
+    st.session_state.selected_assessment_id = None
+
 st.title("PROBE for Executives")
 st.caption("Public Risk Observation and Business Exposure Reporting — outside-in, non-intrusive checks.")
+
+if st.session_state.get("flash_message"):
+    st.success(st.session_state.flash_message)
+    del st.session_state.flash_message
 
 with st.sidebar:
     st.subheader("Assessments")
     assessments = list_assessments(30)
     options = {f"{a.company_name} ({a.primary_domain})": a.assessment_id for a in assessments}
-    selected_label = st.selectbox("Open", list(options.keys()) or ["—"], index=0 if options else 0)
-    current_id = options.get(selected_label) if options else None
+    if options:
+        labels = list(options.keys())
+        ids = list(options.values())
+        default_index = 0
+        if st.session_state.selected_assessment_id in ids:
+            default_index = ids.index(st.session_state.selected_assessment_id)
+        selected_label = st.selectbox("Open", labels, index=default_index)
+        current_id = options[selected_label]
+        st.session_state.selected_assessment_id = current_id
+    else:
+        st.selectbox("Open", ["No assessments yet"], disabled=True)
+        current_id = None
     if st.button("Delete selected", disabled=not current_id):
         if current_id:
             delete_assessment_cascade(current_id)
@@ -51,13 +73,45 @@ tab_new, tab_auth, tab_dash = st.tabs(["New assessment", "Authorize & run", "Das
 
 with tab_new:
     st.markdown("Create an assessment. You will verify control of the domain before scans run.")
-    with st.form("new_asm"):
-        company = st.text_input("Company name", placeholder="DemoCorp")
-        domain = st.text_input("Primary domain", placeholder="example.com")
-        asm_name = st.text_input("Assessment name", placeholder="Q2 Outside-In Review")
-        asm_date = st.text_input("Assessment date", placeholder="2026-05-13")
-        owner = st.text_input("Business owner (optional)", placeholder="IT Security")
-        ips = st.text_input("Public IPs (optional, comma-separated)", placeholder="203.0.113.10")
+    st.caption("Defaults are prefilled for demo — edit any field before submitting.")
+    _today = date.today().isoformat()
+    with st.form("new_asm", clear_on_submit=True):
+        company = st.text_input(
+            "Company name *",
+            value="DemoCorp",
+            help="Legal or display name for the report.",
+            key="new_company",
+        )
+        domain = st.text_input(
+            "Primary domain *",
+            value="example.com",
+            help="Apex domain preferred (no https://). Use example.com for demo mode.",
+            key="new_domain",
+        )
+        asm_name = st.text_input(
+            "Assessment name",
+            value="Outside-In Demo",
+            help="Label for this assessment run.",
+            key="new_asm_name",
+        )
+        asm_date = st.text_input(
+            "Assessment date",
+            value=_today,
+            help="Report date (YYYY-MM-DD).",
+            key="new_asm_date",
+        )
+        owner = st.text_input(
+            "Business owner (optional)",
+            value="IT Security",
+            help="Optional contact or team name.",
+            key="new_owner",
+        )
+        ips = st.text_input(
+            "Public IPs (optional, comma-separated)",
+            value="",
+            help="Optional; reserved for future IP correlation.",
+            key="new_ips",
+        )
         submitted = st.form_submit_button("Create assessment")
     if submitted:
         if not company.strip() or not domain.strip():
@@ -71,9 +125,12 @@ with tab_new:
                 business_owner=owner,
                 public_ips=ips,
             )
-            st.success(f"Created **{a.assessment_id}**.")
-            st.info(instr)
-            st.code(verification_record_value(a.verification_token), language="text")
+            st.session_state.selected_assessment_id = a.assessment_id
+            st.session_state.flash_message = (
+                f"Created **{a.assessment_id}**. Open **Authorize & run** → "
+                f"**Authorize (demo mode)** for class, or add the DNS TXT record then **Verify DNS TXT**."
+            )
+            st.rerun()
 
 with tab_auth:
     if not current_id:
@@ -139,7 +196,19 @@ with tab_dash:
         with g2:
             st.plotly_chart(fig_severity_counts(findings), use_container_width=True)
 
-        st.plotly_chart(fig_top_findings(findings), use_container_width=True)
+        if top_findings_use_table(findings):
+            st.markdown("#### Highest-priority findings")
+            st.caption(
+                "Ranked list — bar chart is hidden when there are only a few findings "
+                "or every finding has the same risk score."
+            )
+            st.dataframe(
+                top_findings_ranked_table(findings),
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.plotly_chart(fig_top_findings(findings), use_container_width=True)
         c3, c4 = st.columns(2)
         with c3:
             st.plotly_chart(fig_category_risk(findings), use_container_width=True)
