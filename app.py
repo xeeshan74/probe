@@ -15,6 +15,7 @@ from assessment_controller import (
     run_assessment,
 )
 from authorization import verification_record_value
+from finding_help import render_guide_tab, resolve_help_key
 from chart_help import (
     CONFIDENCE_VS_SEVERITY,
     EXPOSURE_SCORE,
@@ -47,12 +48,57 @@ from storage import (
     list_findings,
 )
 
+FINDINGS_TABLE_COLUMNS = [
+    ("title", "Finding"),
+    ("severity", "Severity"),
+    ("confidence", "Confidence"),
+    ("risk_score", "Risk score"),
+    ("hostname", "Host"),
+    ("category", "Category"),
+    ("business_impact", "Business impact"),
+    ("technical_evidence", "Technical evidence"),
+    ("recommended_action", "Remediation (best practice)"),
+]
+
+
+def findings_display_dataframe(findings: list) -> pd.DataFrame:
+    """Executive findings table with remediation and evidence."""
+    if not findings:
+        return pd.DataFrame()
+    df = pd.DataFrame(findings)
+    src_cols = [src for src, _ in FINDINGS_TABLE_COLUMNS if src in df.columns]
+    out = df[src_cols].copy()
+    out.columns = [label for src, label in FINDINGS_TABLE_COLUMNS if src in df.columns]
+    if "Severity" in out.columns:
+        out["Severity"] = out["Severity"].str.title()
+    if "Confidence" in out.columns:
+        out["Confidence"] = out["Confidence"].str.title()
+    if "Category" in out.columns:
+        out["Category"] = out["Category"].replace("", "—").fillna("—")
+    return out
+
+
+def findings_table_column_config() -> dict:
+    return {
+        "Finding": st.column_config.TextColumn(width="medium"),
+        "Severity": st.column_config.TextColumn(width="small"),
+        "Confidence": st.column_config.TextColumn(width="small"),
+        "Risk score": st.column_config.NumberColumn(format="%d", width="small"),
+        "Host": st.column_config.TextColumn(width="small"),
+        "Category": st.column_config.TextColumn(width="small"),
+        "Business impact": st.column_config.TextColumn(width="medium"),
+        "Technical evidence": st.column_config.TextColumn(width="large"),
+        "Remediation (best practice)": st.column_config.TextColumn(width="large"),
+    }
+
 st.set_page_config(page_title="PROBE for Executives", layout="wide")
 
 init_db()
 
 if "selected_assessment_id" not in st.session_state:
     st.session_state.selected_assessment_id = None
+if "vuln_help_key" not in st.session_state:
+    st.session_state.vuln_help_key = None
 
 st.title("PROBE for Executives")
 st.caption("Public Risk Observation and Business Exposure Reporting — outside-in, non-intrusive checks.")
@@ -82,7 +128,9 @@ with st.sidebar:
             delete_assessment_cascade(current_id)
             st.rerun()
 
-tab_new, tab_auth, tab_dash = st.tabs(["New assessment", "Authorize & run", "Dashboard"])
+tab_new, tab_auth, tab_dash, tab_guide = st.tabs(
+    ["New assessment", "Authorize & run", "Dashboard", "Guide"]
+)
 
 with tab_new:
     st.markdown("Create an assessment. You will verify control of the domain before scans run.")
@@ -257,8 +305,46 @@ with tab_dash:
             st.plotly_chart(fig_confidence_severity(findings), use_container_width=True)
             chart_help(CONFIDENCE_VS_SEVERITY)
 
-        with st.expander("Findings table"):
-            st.dataframe(findings, use_container_width=True, hide_index=True)
+        with st.expander("Findings table", expanded=True):
+            if not findings:
+                st.info("No findings yet. Run an assessment from **Authorize & run**.")
+            else:
+                display_df = findings_display_dataframe(findings)
+                st.caption(
+                    "Full finding detail including **remediation (best practice)**. "
+                    "Select a row, then open the **Guide** tab for exploitation context."
+                )
+                picked_idx: int | None = None
+                try:
+                    table_event = st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config=findings_table_column_config(),
+                        on_select="rerun",
+                        selection_mode="single-row",
+                        key="findings_table_select",
+                    )
+                    if table_event.selection.rows:
+                        picked_idx = int(table_event.selection.rows[0])
+                except TypeError:
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config=findings_table_column_config(),
+                    )
+
+                if picked_idx is not None:
+                    active_title = str(findings[picked_idx]["title"])
+                    help_key = resolve_help_key(active_title)
+                    if help_key:
+                        st.session_state.vuln_help_key = help_key
+                        st.session_state.guide_from_finding = active_title
+                        st.success(f"Open the **Guide** tab for: **{active_title}**")
+                    else:
+                        st.warning(f"No guide entry yet for: **{active_title}**")
+
         with st.expander("Assets"):
             st.dataframe(
                 [
@@ -289,3 +375,6 @@ with tab_dash:
             file_name=f"probe_report_{current_id}.pdf",
             mime="application/pdf",
         )
+
+with tab_guide:
+    render_guide_tab(st.session_state.get("vuln_help_key"))

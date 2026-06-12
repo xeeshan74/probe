@@ -45,7 +45,7 @@ az webapp start --resource-group capstone-295 --name probe-capstone295
 From `probe/` folder:
 
 ```powershell
-Compress-Archive -Path app.py,requirements.txt,assessment_controller.py,authorization.py,chart_help.py,charts.py,config.py,discovery.py,dns_utils.py,email_checks.py,models.py,page_classifier.py,report_generator.py,risk_engine.py,storage.py,tls_checks.py,web_checks.py,__init__.py,utils,.streamlit -DestinationPath deploy.zip -Force
+Compress-Archive -Path app.py,requirements.txt,assessment_controller.py,authorization.py,chart_help.py,finding_help.py,charts.py,config.py,discovery.py,dns_utils.py,email_checks.py,models.py,page_classifier.py,report_generator.py,risk_engine.py,storage.py,tls_checks.py,web_checks.py,__init__.py,utils,.streamlit -DestinationPath deploy.zip -Force
 
 az webapp deploy --resource-group capstone-295 --name probe-capstone295 --src-path deploy.zip --type zip
 ```
