@@ -1,0 +1,12 @@
+[server]
+headless = true
+port = 8000
+address = "0.0.0.0"
+enableCORS = false
+enableXsrfProtection = false
+enableWebsocketCompression = false
+
+[browser]
+gatherUsageStats = false
+# For Azure deploy only — do not set serverAddress/serverPort locally.
+# See deploy/azure/README.md for App Service proxy settings.

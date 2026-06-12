@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
+import pandas as pd
 import streamlit as st
 
 from assessment_controller import (
@@ -14,11 +15,23 @@ from assessment_controller import (
     run_assessment,
 )
 from authorization import verification_record_value
+from chart_help import (
+    CONFIDENCE_VS_SEVERITY,
+    EXPOSURE_SCORE,
+    FINDINGS_BY_SEVERITY,
+    RISK_BY_CATEGORY,
+    SEVERITY_TREND,
+    SUMMARY_TABLE,
+    TOP_FINDINGS,
+    TOP_FINDINGS_TABLE,
+    chart_help,
+)
 from charts import (
     fig_category_risk,
     fig_confidence_severity,
     fig_risk_gauge,
     fig_severity_counts,
+    fig_severity_trend,
     fig_top_findings,
     top_findings_ranked_table,
     top_findings_use_table,
@@ -184,36 +197,65 @@ with tab_dash:
         metrics = assessment_summary_metrics(current_id)
 
         st.subheader("Executive view")
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Assets in scope", metrics["asset_count"])
-        m2.metric("Findings", metrics["finding_count"])
-        m3.metric("High / critical", metrics["high_risk_findings"])
-        m4.metric("Exposure score (sum cap)", metrics["aggregate_risk_score"])
+        summary_df = pd.DataFrame(
+            [
+                {
+                    "Assets in scope": metrics["asset_count"],
+                    "Findings": metrics["finding_count"],
+                    "High / critical": metrics["high_risk_findings"],
+                    "Exposure score (sum cap)": metrics["aggregate_risk_score"],
+                }
+            ]
+        )
+        st.dataframe(
+            summary_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Assets in scope": st.column_config.NumberColumn(format="%d"),
+                "Findings": st.column_config.NumberColumn(format="%d"),
+                "High / critical": st.column_config.NumberColumn(format="%d"),
+                "Exposure score (sum cap)": st.column_config.NumberColumn(format="%d"),
+            },
+        )
+        chart_help(SUMMARY_TABLE)
 
-        g1, g2 = st.columns([1, 1])
-        with g1:
-            st.plotly_chart(fig_risk_gauge(metrics["aggregate_risk_score"]), use_container_width=True)
-        with g2:
-            st.plotly_chart(fig_severity_counts(findings), use_container_width=True)
-
-        if top_findings_use_table(findings):
-            st.markdown("#### Highest-priority findings")
-            st.caption(
-                "Ranked list — bar chart is hidden when there are only a few findings "
-                "or every finding has the same risk score."
-            )
-            st.dataframe(
-                top_findings_ranked_table(findings),
+        # Bento layout: hero gauge left; severity + trend + priorities stacked right.
+        hero_col, detail_col = st.columns([2, 3], gap="medium")
+        with hero_col:
+            st.plotly_chart(
+                fig_risk_gauge(metrics["aggregate_risk_score"]),
                 use_container_width=True,
-                hide_index=True,
             )
-        else:
-            st.plotly_chart(fig_top_findings(findings), use_container_width=True)
-        c3, c4 = st.columns(2)
-        with c3:
+            chart_help(EXPOSURE_SCORE)
+        with detail_col:
+            snap_a, snap_b = st.columns(2, gap="small")
+            with snap_a:
+                st.plotly_chart(fig_severity_counts(findings), use_container_width=True)
+                chart_help(FINDINGS_BY_SEVERITY)
+            with snap_b:
+                st.plotly_chart(fig_severity_trend(findings, compact=True), use_container_width=True)
+                chart_help(SEVERITY_TREND)
+
+            if top_findings_use_table(findings):
+                st.markdown("##### Highest-priority findings")
+                st.dataframe(
+                    top_findings_ranked_table(findings),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                chart_help(TOP_FINDINGS_TABLE)
+            else:
+                st.plotly_chart(fig_top_findings(findings, compact=True), use_container_width=True)
+                chart_help(TOP_FINDINGS)
+
+        insight_a, insight_b = st.columns(2, gap="medium")
+        with insight_a:
             st.plotly_chart(fig_category_risk(findings), use_container_width=True)
-        with c4:
+            chart_help(RISK_BY_CATEGORY)
+        with insight_b:
             st.plotly_chart(fig_confidence_severity(findings), use_container_width=True)
+            chart_help(CONFIDENCE_VS_SEVERITY)
 
         with st.expander("Findings table"):
             st.dataframe(findings, use_container_width=True, hide_index=True)

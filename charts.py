@@ -33,6 +33,11 @@ GAUGE_BANDS = [
     (CONFIG.risk.high, 100, "rgba(255, 77, 109, 0.45)"),
 ]
 
+# Hero gauge vs supporting tiles on the executive dashboard.
+DASHBOARD_HERO_HEIGHT = 500
+DASHBOARD_CHART_HEIGHT = 235
+DASHBOARD_PANEL_HEIGHT = 255
+
 
 def _gauge_bar_color(score: int) -> str:
     if score >= CONFIG.risk.high:
@@ -51,19 +56,33 @@ def _apply_layout(
     height: int = 400,
     show_legend: bool = False,
 ) -> go.Figure:
+    compact = height <= 300
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(17, 24, 39, 0.45)",
-        font=dict(family="Segoe UI, Inter, Roboto, sans-serif", size=13, color="#e5e7eb"),
+        font=dict(
+            family="Segoe UI, Inter, Roboto, sans-serif",
+            size=12 if compact else 13,
+            color="#e5e7eb",
+        ),
         title=dict(
             text=title,
-            font=dict(size=17, color="#f9fafb", family="Segoe UI, Inter, sans-serif"),
+            font=dict(
+                size=15 if compact else 17,
+                color="#f9fafb",
+                family="Segoe UI, Inter, sans-serif",
+            ),
             x=0,
             xanchor="left",
-            pad=dict(t=4, b=12),
+            pad=dict(t=2 if compact else 4, b=8 if compact else 12),
         ),
-        margin=dict(l=48, r=28, t=72, b=48),
+        margin=dict(
+            l=40 if compact else 48,
+            r=20 if compact else 28,
+            t=56 if compact else 72,
+            b=36 if compact else 48,
+        ),
         height=height,
         showlegend=show_legend,
         legend=dict(
@@ -110,7 +129,7 @@ def _empty_figure(title: str, message: str = "No data yet") -> go.Figure:
     )
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
-    return _apply_layout(fig, title=title, height=320)
+    return _apply_layout(fig, title=title, height=DASHBOARD_CHART_HEIGHT)
 
 
 def fig_risk_gauge(score: int) -> go.Figure:
@@ -127,7 +146,7 @@ def fig_risk_gauge(score: int) -> go.Figure:
             },
             number={
                 "suffix": " / 100",
-                "font": {"size": 42, "color": "#f9fafb", "family": "Segoe UI, Inter, sans-serif"},
+                "font": {"size": 48, "color": "#f9fafb", "family": "Segoe UI, Inter, sans-serif"},
             },
             gauge={
                 "shape": "angular",
@@ -148,10 +167,48 @@ def fig_risk_gauge(score: int) -> go.Figure:
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        height=340,
-        margin=dict(l=24, r=24, t=64, b=16),
+        height=DASHBOARD_HERO_HEIGHT,
+        margin=dict(l=24, r=24, t=64, b=24),
     )
     return fig
+
+
+def _severity_trend_summary(counts: pd.DataFrame) -> tuple[str, str, str]:
+    """Return (ratio label, trend label, trend color) for low→high severity bars."""
+    order = ["low", "medium", "high", "critical"]
+    total = int(counts["count"].sum())
+    if total == 0:
+        return "No findings", "—", "#94a3b8"
+
+    by_sev = {row["severity"]: int(row["count"]) for _, row in counts.iterrows()}
+    low_tier = by_sev.get("low", 0) + by_sev.get("medium", 0)
+    high_tier = by_sev.get("high", 0) + by_sev.get("critical", 0)
+    pct_parts = [f"{sev.title()} {by_sev.get(sev, 0) / total * 100:.0f}%" for sev in order]
+    ratio_label = (
+        f"Low→High ratio {low_tier}:{high_tier} · High→Low {high_tier}:{low_tier} · "
+        + " · ".join(pct_parts)
+    )
+
+    # Slope of counts from low (left) to critical (right)
+    y = [by_sev.get(s, 0) for s in order]
+    n = len(y)
+    x_mean = (n - 1) / 2
+    y_mean = sum(y) / n
+    num = sum((i - x_mean) * (y[i] - y_mean) for i in range(n))
+    den = sum((i - x_mean) ** 2 for i in range(n)) or 1
+    slope = num / den
+
+    if slope > 0.2:
+        trend_label = "Trend: inclining ↗ (counts rise toward Critical — review high-severity items)"
+        color = "#ff8c42"
+    elif slope < -0.2:
+        trend_label = "Trend: declining ↘ (counts fall toward Critical — mostly lower severity)"
+        color = "#4ade80"
+    else:
+        trend_label = "Trend: flat → (even mix across severities)"
+        color = "#94a3b8"
+
+    return ratio_label, trend_label, color
 
 
 def fig_severity_counts(findings: List[Dict[str, Any]]) -> go.Figure:
@@ -160,11 +217,16 @@ def fig_severity_counts(findings: List[Dict[str, Any]]) -> go.Figure:
         return _empty_figure(title, "No findings")
 
     df = pd.DataFrame(findings)
-    order = ["critical", "high", "medium", "low"]
+    order = ["low", "medium", "high", "critical"]
     counts = df["severity"].str.lower().value_counts().reindex(order, fill_value=0).reset_index()
     counts.columns = ["severity", "count"]
     counts["severity"] = pd.Categorical(counts["severity"], categories=order, ordered=True)
     counts["label"] = counts["severity"].str.title()
+    total = int(counts["count"].sum())
+    counts["pct"] = (counts["count"] / total * 100).round(0).astype(int)
+    counts["bar_text"] = counts.apply(
+        lambda r: f"{int(r['count'])}<br>({int(r['pct'])}%)", axis=1
+    )
 
     fig = px.bar(
         counts,
@@ -172,17 +234,78 @@ def fig_severity_counts(findings: List[Dict[str, Any]]) -> go.Figure:
         y="count",
         color="severity",
         color_discrete_map=SEVERITY_COLORS,
-        text="count",
+        text="bar_text",
         category_orders={"label": [s.title() for s in order]},
     )
     fig.update_traces(
         textposition="outside",
-        textfont=dict(size=14, color="#f1f5f9"),
+        texttemplate="%{text}",
+        textfont=dict(size=12, color="#f1f5f9"),
         marker=dict(line=dict(width=0), cornerradius=8),
-        hovertemplate="<b>%{x}</b><br>Count: %{y}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Count: %{y}<br>Share: %{customdata[0]}%<extra></extra>",
+        customdata=counts[["pct"]].values,
+        cliponaxis=False,
     )
-    fig.update_layout(bargap=0.35)
-    return _apply_layout(fig, title=title, height=360)
+    y_max = int(counts["count"].max()) or 1
+    fig.update_layout(bargap=0.35, showlegend=False)
+    fig.update_xaxes(title=None)
+    fig.update_yaxes(title="Count", range=[0, y_max + max(2, round(y_max * 0.45))])
+    fig = _apply_layout(fig, title=title, height=DASHBOARD_CHART_HEIGHT, show_legend=False)
+    fig.update_layout(margin=dict(l=40, r=20, t=64, b=36))
+    return fig
+
+
+def fig_severity_trend(findings: List[Dict[str, Any]], *, compact: bool = False) -> go.Figure:
+    """Low→Critical severity trend line (shown beside highest-priority findings)."""
+    title = "Severity trend"
+    if not findings:
+        return _empty_figure(title, "No findings")
+
+    df = pd.DataFrame(findings)
+    order = ["low", "medium", "high", "critical"]
+    counts = df["severity"].str.lower().value_counts().reindex(order, fill_value=0).reset_index()
+    counts.columns = ["severity", "count"]
+    counts["label"] = counts["severity"].str.title()
+    ratio_label, trend_label, trend_color = _severity_trend_summary(counts)
+
+    y_max = int(counts["count"].max()) or 1
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=counts["label"],
+            y=counts["count"],
+            mode="lines+markers",
+            name="Severity trend",
+            line=dict(color="#cbd5e1", width=2 if compact else 2.5),
+            marker=dict(
+                size=8 if compact else 10,
+                color="#f8fafc",
+                line=dict(width=2, color="#64748b"),
+            ),
+            hovertemplate="<b>%{x}</b><br>Count: %{y}<extra></extra>",
+        )
+    )
+    chart_height = DASHBOARD_CHART_HEIGHT
+    caption = trend_label if compact else f"{ratio_label}<br><span style='color:{trend_color}'><b>{trend_label}</b></span>"
+    fig.update_layout(
+        xaxis_title="Severity (low → critical)" if not compact else None,
+        yaxis_title="Count",
+        yaxis=dict(range=[0, y_max + max(1, y_max * 0.25)]),
+        showlegend=False,
+    )
+    fig = _apply_layout(fig, title=title, height=chart_height, show_legend=False)
+    fig.update_layout(margin=dict(t=72, b=32, l=40, r=24))
+    fig.add_annotation(
+        text=f"<span style='color:{trend_color}'><b>{caption}</b></span>" if compact else caption,
+        xref="paper",
+        yref="paper",
+        x=0,
+        y=1.10 if compact else 1.14,
+        showarrow=False,
+        align="left",
+        font=dict(size=9 if compact else 10, color="#94a3b8"),
+    )
+    return fig
 
 
 def fig_category_risk(findings: List[Dict[str, Any]]) -> go.Figure:
@@ -215,7 +338,7 @@ def fig_category_risk(findings: List[Dict[str, Any]]) -> go.Figure:
         hovertemplate="<b>%{y}</b><br>Risk points: %{x}<extra></extra>",
     )
     fig.update_layout(bargap=0.28, xaxis_title="Weighted risk points", yaxis_title=None)
-    return _apply_layout(fig, title=title, height=380)
+    return _apply_layout(fig, title=title, height=DASHBOARD_CHART_HEIGHT)
 
 
 def _top_findings_df(findings: List[Dict[str, Any]], n: int = 8) -> pd.DataFrame:
@@ -253,7 +376,7 @@ def top_findings_ranked_table(findings: List[Dict[str, Any]], n: int = 8) -> pd.
     )[["Rank", "Finding", "Severity", "Risk score", "Host"]]
 
 
-def fig_top_findings(findings: List[Dict[str, Any]], n: int = 8) -> go.Figure:
+def fig_top_findings(findings: List[Dict[str, Any]], n: int = 8, *, compact: bool = False) -> go.Figure:
     title = "Highest-priority findings"
     subtitle = "Longer bar = address sooner (by risk score)"
     if not findings:
@@ -292,18 +415,20 @@ def fig_top_findings(findings: List[Dict[str, Any]], n: int = 8) -> go.Figure:
         yaxis_title=None,
     )
     fig.update_xaxes(range=[0, x_max])
-    height = min(520, 280 + len(df) * 34)
-    fig = _apply_layout(fig, title=title, height=height, show_legend=True)
-    fig.add_annotation(
-        text=subtitle,
-        xref="paper",
-        yref="paper",
-        x=0,
-        y=1.08,
-        showarrow=False,
-        font=dict(size=12, color="#94a3b8"),
-        xanchor="left",
-    )
+    height = DASHBOARD_PANEL_HEIGHT if compact else DASHBOARD_CHART_HEIGHT
+    show_legend = not compact
+    fig = _apply_layout(fig, title=title, height=height, show_legend=show_legend)
+    if not compact:
+        fig.add_annotation(
+            text=subtitle,
+            xref="paper",
+            yref="paper",
+            x=0,
+            y=1.08,
+            showarrow=False,
+            font=dict(size=12, color="#94a3b8"),
+            xanchor="left",
+        )
     return fig
 
 
@@ -340,5 +465,7 @@ def fig_confidence_severity(findings: List[Dict[str, Any]]) -> go.Figure:
     fig.update_layout(
         xaxis_title="Severity",
         yaxis_title="Confidence",
+        xaxis=dict(type="category"),
+        yaxis=dict(type="category"),
     )
-    return _apply_layout(fig, title=title, height=420, show_legend=False)
+    return _apply_layout(fig, title=title, height=DASHBOARD_CHART_HEIGHT, show_legend=False)
