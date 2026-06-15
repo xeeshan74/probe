@@ -99,6 +99,8 @@ if "selected_assessment_id" not in st.session_state:
     st.session_state.selected_assessment_id = None
 if "vuln_help_key" not in st.session_state:
     st.session_state.vuln_help_key = None
+if "selected_tab_index" not in st.session_state:
+    st.session_state.selected_tab_index = 0
 
 st.title("PROBE for Executives")
 st.caption("Public Risk Observation and Business Exposure Reporting — outside-in, non-intrusive checks.")
@@ -129,10 +131,12 @@ with st.sidebar:
             st.rerun()
 
 tab_new, tab_auth, tab_dash, tab_guide = st.tabs(
-    ["New assessment", "Authorize & run", "Dashboard", "Guide"]
+    ["New assessment", "Authorize & run", "Dashboard", "Guide"],
+    selected=st.session_state.selected_tab_index
 )
 
 with tab_new:
+    st.session_state.selected_tab_index = 0
     st.markdown("Create an assessment. You will verify control of the domain before scans run.")
     st.caption("Defaults are prefilled for demo — edit any field before submitting.")
     _today = date.today().isoformat()
@@ -194,6 +198,7 @@ with tab_new:
             st.rerun()
 
 with tab_auth:
+    st.session_state.selected_tab_index = 1
     if not current_id:
         st.warning("Select or create an assessment in the sidebar.")
     else:
@@ -236,6 +241,7 @@ with tab_auth:
                     st.error(msg)
 
 with tab_dash:
+    st.session_state.selected_tab_index = 2
     if not current_id:
         st.warning("Select an assessment in the sidebar.")
     else:
@@ -377,4 +383,5 @@ with tab_dash:
         )
 
 with tab_guide:
+    st.session_state.selected_tab_index = 3
     render_guide_tab(st.session_state.get("vuln_help_key"))
