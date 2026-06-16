@@ -99,6 +99,8 @@ if "selected_assessment_id" not in st.session_state:
     st.session_state.selected_assessment_id = None
 if "vuln_help_key" not in st.session_state:
     st.session_state.vuln_help_key = None
+if "selected_tab_index" not in st.session_state:
+    st.session_state.selected_tab_index = 0
 
 st.title("PROBE for Executives")
 st.caption("Public Risk Observation and Business Exposure Reporting — outside-in, non-intrusive checks.")
@@ -128,8 +130,10 @@ with st.sidebar:
             delete_assessment_cascade(current_id)
             st.rerun()
 
+TABS = ["New assessment", "Authorize & run", "Dashboard", "Guide"]
 tab_new, tab_auth, tab_dash, tab_guide = st.tabs(
-    ["New assessment", "Authorize & run", "Dashboard", "Guide"]
+    TABS,
+    default=TABS[st.session_state.selected_tab_index]
 )
 
 with tab_new:
@@ -187,6 +191,7 @@ with tab_new:
                 public_ips=ips,
             )
             st.session_state.selected_assessment_id = a.assessment_id
+            st.session_state.selected_tab_index = 1
             st.session_state.flash_message = (
                 f"Created **{a.assessment_id}**. Open **Authorize & run** → "
                 f"**Authorize (demo mode)** for class, or add the DNS TXT record then **Verify DNS TXT**."
@@ -207,6 +212,7 @@ with tab_auth:
             c1, c2, c3 = st.columns(3)
             with c1:
                 if st.button("Verify DNS TXT"):
+                    st.session_state.selected_tab_index = 1
                     ok, msg = authorize_dns(current_id)
                     if ok:
                         st.success(msg)
@@ -214,6 +220,7 @@ with tab_auth:
                         st.error(msg)
             with c2:
                 if st.button("Authorize (demo mode)"):
+                    st.session_state.selected_tab_index = 1
                     ok, msg = authorize_demo(current_id)
                     if ok:
                         st.success(msg)
@@ -221,6 +228,7 @@ with tab_auth:
                         st.error(msg)
             with c3:
                 if st.button("Authorize (manual / class demo)"):
+                    st.session_state.selected_tab_index = 1
                     ok, msg = authorize_manual(current_id)
                     if ok:
                         st.success(msg)
@@ -228,6 +236,7 @@ with tab_auth:
                         st.error(msg)
 
             if st.button("Run assessment (safe checks)", type="primary"):
+                st.session_state.selected_tab_index = 1
                 with st.spinner("Running discovery and checks…"):
                     ok, msg = run_assessment(current_id)
                 if ok:
