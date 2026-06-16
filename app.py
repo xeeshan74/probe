@@ -130,9 +130,10 @@ with st.sidebar:
             delete_assessment_cascade(current_id)
             st.rerun()
 
+TABS = ["New assessment", "Authorize & run", "Dashboard", "Guide"]
 tab_new, tab_auth, tab_dash, tab_guide = st.tabs(
-    ["New assessment", "Authorize & run", "Dashboard", "Guide"],
-    selected=st.session_state.selected_tab_index
+    TABS,
+    default=TABS[st.session_state.selected_tab_index]
 )
 
 with tab_new:
