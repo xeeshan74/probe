@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 
 from config import CONFIG
 
@@ -39,6 +41,94 @@ DASHBOARD_CHART_HEIGHT = 235
 DASHBOARD_PANEL_HEIGHT = 255
 
 
+@dataclass(frozen=True)
+class ChartTheme:
+    template: str
+    paper_bg: str
+    plot_bg: str
+    font: str
+    title: str
+    tick: str
+    axis_title: str
+    grid: str
+    line: str
+    marker_fill: str
+    marker_line: str
+    bar_text: str
+    muted: str
+    hover_bg: str
+    hover_font: str
+    hover_border: str
+    gauge_number: str
+    gauge_title: str
+    gauge_bg: str
+    gauge_tick: str
+    scatter_stroke: str
+    trend_decline: str
+    trend_incline: str
+
+
+def _streamlit_is_light() -> bool:
+    try:
+        return st.get_option("theme.base") == "light"
+    except Exception:
+        return False
+
+
+def chart_theme() -> ChartTheme:
+    if _streamlit_is_light():
+        return ChartTheme(
+            template="plotly_white",
+            paper_bg="rgba(0,0,0,0)",
+            plot_bg="rgba(248, 250, 252, 0.95)",
+            font="#1f2937",
+            title="#111827",
+            tick="#374151",
+            axis_title="#374151",
+            grid="rgba(148, 163, 184, 0.35)",
+            line="#64748b",
+            marker_fill="#ffffff",
+            marker_line="#64748b",
+            bar_text="#111827",
+            muted="#475569",
+            hover_bg="#ffffff",
+            hover_font="#111827",
+            hover_border="#cbd5e1",
+            gauge_number="#111827",
+            gauge_title="#374151",
+            gauge_bg="rgba(226, 232, 240, 0.65)",
+            gauge_tick="#64748b",
+            scatter_stroke="#334155",
+            trend_decline="#166534",
+            trend_incline="#c2410c",
+        )
+    return ChartTheme(
+        template="plotly_dark",
+        paper_bg="rgba(0,0,0,0)",
+        plot_bg="rgba(17, 24, 39, 0.45)",
+        font="#e5e7eb",
+        title="#f9fafb",
+        tick="#cbd5e1",
+        axis_title="#e2e8f0",
+        grid="rgba(148, 163, 184, 0.15)",
+        line="#cbd5e1",
+        marker_fill="#f8fafc",
+        marker_line="#64748b",
+        bar_text="#f1f5f9",
+        muted="#94a3b8",
+        hover_bg="#1f2937",
+        hover_font="#f3f4f6",
+        hover_border="#374151",
+        gauge_number="#f9fafb",
+        gauge_title="#e5e7eb",
+        gauge_bg="rgba(30, 41, 59, 0.6)",
+        gauge_tick="#94a3b8",
+        scatter_stroke="#1e293b",
+        trend_decline="#4ade80",
+        trend_incline="#ff8c42",
+    )
+
+
 def _gauge_bar_color(score: int) -> str:
     if score >= CONFIG.risk.high:
         return "#ff4d6d"
@@ -56,21 +146,22 @@ def _apply_layout(
     height: int = 400,
     show_legend: bool = False,
 ) -> go.Figure:
+    t = chart_theme()
     compact = height <= 300
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(17, 24, 39, 0.45)",
+        template=t.template,
+        paper_bgcolor=t.paper_bg,
+        plot_bgcolor=t.plot_bg,
         font=dict(
             family="Segoe UI, Inter, Roboto, sans-serif",
             size=12 if compact else 13,
-            color="#e5e7eb",
+            color=t.font,
         ),
         title=dict(
             text=title,
             font=dict(
                 size=15 if compact else 17,
-                color="#f9fafb",
+                color=t.title,
                 family="Segoe UI, Inter, sans-serif",
             ),
             x=0,
@@ -92,31 +183,33 @@ def _apply_layout(
             xanchor="right",
             x=1,
             bgcolor="rgba(0,0,0,0)",
+            font=dict(color=t.font),
         ),
         hoverlabel=dict(
-            bgcolor="#1f2937",
-            bordercolor="#374151",
-            font=dict(color="#f3f4f6", size=13),
+            bgcolor=t.hover_bg,
+            bordercolor=t.hover_border,
+            font=dict(color=t.hover_font, size=13),
         ),
     )
     fig.update_xaxes(
-        gridcolor="rgba(148, 163, 184, 0.15)",
-        linecolor="rgba(148, 163, 184, 0.25)",
-        zerolinecolor="rgba(148, 163, 184, 0.2)",
-        tickfont=dict(color="#cbd5e1"),
-        title_font=dict(color="#e2e8f0"),
+        gridcolor=t.grid,
+        linecolor=t.grid,
+        zerolinecolor=t.grid,
+        tickfont=dict(color=t.tick),
+        title_font=dict(color=t.axis_title),
     )
     fig.update_yaxes(
-        gridcolor="rgba(148, 163, 184, 0.15)",
-        linecolor="rgba(148, 163, 184, 0.25)",
-        zerolinecolor="rgba(148, 163, 184, 0.2)",
-        tickfont=dict(color="#cbd5e1"),
-        title_font=dict(color="#e2e8f0"),
+        gridcolor=t.grid,
+        linecolor=t.grid,
+        zerolinecolor=t.grid,
+        tickfont=dict(color=t.tick),
+        title_font=dict(color=t.axis_title),
     )
     return fig
 
 
 def _empty_figure(title: str, message: str = "No data yet") -> go.Figure:
+    t = chart_theme()
     fig = go.Figure()
     fig.add_annotation(
         text=message,
@@ -125,7 +218,7 @@ def _empty_figure(title: str, message: str = "No data yet") -> go.Figure:
         x=0.5,
         y=0.5,
         showarrow=False,
-        font=dict(size=15, color="#94a3b8"),
+        font=dict(size=15, color=t.muted),
     )
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
@@ -133,6 +226,7 @@ def _empty_figure(title: str, message: str = "No data yet") -> go.Figure:
 
 
 def fig_risk_gauge(score: int) -> go.Figure:
+    t = chart_theme()
     score = max(0, min(100, int(score)))
     steps = [{"range": [lo, hi], "color": color} for lo, hi, color in GAUGE_BANDS]
     fig = go.Figure(
@@ -142,31 +236,31 @@ def fig_risk_gauge(score: int) -> go.Figure:
             domain={"x": [0, 1], "y": [0, 1]},
             title={
                 "text": "Exposure score",
-                "font": {"size": 16, "color": "#e5e7eb", "family": "Segoe UI, Inter, sans-serif"},
+                "font": {"size": 16, "color": t.gauge_title, "family": "Segoe UI, Inter, sans-serif"},
             },
             number={
                 "suffix": " / 100",
-                "font": {"size": 48, "color": "#f9fafb", "family": "Segoe UI, Inter, sans-serif"},
+                "font": {"size": 48, "color": t.gauge_number, "family": "Segoe UI, Inter, sans-serif"},
             },
             gauge={
                 "shape": "angular",
                 "axis": {
                     "range": [0, 100],
                     "tickwidth": 1,
-                    "tickcolor": "#64748b",
-                    "tickfont": {"color": "#94a3b8", "size": 11},
+                    "tickcolor": t.gauge_tick,
+                    "tickfont": {"color": t.gauge_tick, "size": 11},
                 },
                 "bar": {"color": _gauge_bar_color(score), "thickness": 0.28},
-                "bgcolor": "rgba(30, 41, 59, 0.6)",
+                "bgcolor": t.gauge_bg,
                 "borderwidth": 0,
                 "steps": steps,
             },
         )
     )
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        template=t.template,
+        paper_bgcolor=t.paper_bg,
+        plot_bgcolor=t.paper_bg,
         height=DASHBOARD_HERO_HEIGHT,
         margin=dict(l=24, r=24, t=64, b=24),
     )
@@ -175,10 +269,11 @@ def fig_risk_gauge(score: int) -> go.Figure:
 
 def _severity_trend_summary(counts: pd.DataFrame) -> tuple[str, str, str]:
     """Return (ratio label, trend label, trend color) for low→high severity bars."""
+    t = chart_theme()
     order = ["low", "medium", "high", "critical"]
     total = int(counts["count"].sum())
     if total == 0:
-        return "No findings", "—", "#94a3b8"
+        return "No findings", "—", t.muted
 
     by_sev = {row["severity"]: int(row["count"]) for _, row in counts.iterrows()}
     low_tier = by_sev.get("low", 0) + by_sev.get("medium", 0)
@@ -200,13 +295,13 @@ def _severity_trend_summary(counts: pd.DataFrame) -> tuple[str, str, str]:
 
     if slope > 0.2:
         trend_label = "Trend: inclining ↗ (counts rise toward Critical — review high-severity items)"
-        color = "#ff8c42"
+        color = t.trend_incline
     elif slope < -0.2:
         trend_label = "Trend: declining ↘ (counts fall toward Critical — mostly lower severity)"
-        color = "#4ade80"
+        color = t.trend_decline
     else:
         trend_label = "Trend: flat → (even mix across severities)"
-        color = "#94a3b8"
+        color = t.muted
 
     return ratio_label, trend_label, color
 
@@ -240,7 +335,7 @@ def fig_severity_counts(findings: List[Dict[str, Any]]) -> go.Figure:
     fig.update_traces(
         textposition="outside",
         texttemplate="%{text}",
-        textfont=dict(size=12, color="#f1f5f9"),
+        textfont=dict(size=12, color=chart_theme().bar_text),
         marker=dict(line=dict(width=0), cornerradius=8),
         hovertemplate="<b>%{x}</b><br>Count: %{y}<br>Share: %{customdata[0]}%<extra></extra>",
         customdata=counts[["pct"]].values,
@@ -269,6 +364,7 @@ def fig_severity_trend(findings: List[Dict[str, Any]], *, compact: bool = False)
     ratio_label, trend_label, trend_color = _severity_trend_summary(counts)
 
     y_max = int(counts["count"].max()) or 1
+    t = chart_theme()
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -276,11 +372,11 @@ def fig_severity_trend(findings: List[Dict[str, Any]], *, compact: bool = False)
             y=counts["count"],
             mode="lines+markers",
             name="Severity trend",
-            line=dict(color="#cbd5e1", width=2 if compact else 2.5),
+            line=dict(color=t.line, width=2 if compact else 2.5),
             marker=dict(
                 size=8 if compact else 10,
-                color="#f8fafc",
-                line=dict(width=2, color="#64748b"),
+                color=t.marker_fill,
+                line=dict(width=2, color=t.marker_line),
             ),
             hovertemplate="<b>%{x}</b><br>Count: %{y}<extra></extra>",
         )
@@ -303,7 +399,7 @@ def fig_severity_trend(findings: List[Dict[str, Any]], *, compact: bool = False)
         y=1.10 if compact else 1.14,
         showarrow=False,
         align="left",
-        font=dict(size=9 if compact else 10, color="#94a3b8"),
+        font=dict(size=9 if compact else 10, color=chart_theme().muted),
     )
     return fig
 
@@ -333,7 +429,7 @@ def fig_category_risk(findings: List[Dict[str, Any]]) -> go.Figure:
     )
     fig.update_traces(
         textposition="outside",
-        textfont=dict(size=13, color="#e2e8f0"),
+        textfont=dict(size=13, color=chart_theme().bar_text),
         marker=dict(line=dict(width=0), cornerradius=6),
         hovertemplate="<b>%{y}</b><br>Risk points: %{x}<extra></extra>",
     )
@@ -404,7 +500,7 @@ def fig_top_findings(findings: List[Dict[str, Any]], n: int = 8, *, compact: boo
     fig.update_traces(
         texttemplate="%{x}",
         textposition="outside",
-        textfont=dict(size=12, color="#e2e8f0"),
+        textfont=dict(size=12, color=chart_theme().bar_text),
         marker=dict(line=dict(width=0), cornerradius=6),
         hovertemplate="<b>%{y}</b><br>Score: %{x}<br>Host: %{customdata[0]}<extra></extra>",
         cliponaxis=False,
@@ -426,7 +522,7 @@ def fig_top_findings(findings: List[Dict[str, Any]], n: int = 8, *, compact: boo
             x=0,
             y=1.08,
             showarrow=False,
-            font=dict(size=12, color="#94a3b8"),
+            font=dict(size=12, color=chart_theme().muted),
             xanchor="left",
         )
     return fig
@@ -459,7 +555,7 @@ def fig_confidence_severity(findings: List[Dict[str, Any]]) -> go.Figure:
         category_orders={"severity": sev_order, "confidence": conf_order},
     )
     fig.update_traces(
-        marker=dict(line=dict(width=1.5, color="#1e293b"), opacity=0.88),
+        marker=dict(line=dict(width=1.5, color=chart_theme().scatter_stroke), opacity=0.88),
         hovertemplate="<b>%{hovertext}</b><br>Severity: %{x}<br>Confidence: %{y}<br>Score: %{customdata[1]}<extra></extra>",
     )
     fig.update_layout(

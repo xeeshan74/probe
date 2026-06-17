@@ -26,7 +26,7 @@ A lightweight, report-oriented **outside-in exposure assessment** tool for enter
 git clone https://github.com/xeeshan74/probe.git
 cd probe
 pip install -r requirements.txt
-python -m streamlit run app.py python --server.address localhost --server.port 8501
+python -m streamlit run app.py --server.address localhost --server.port 8501
 ```
 
 Open **http://localhost:8501** in your browser.
