@@ -1,0 +1,22 @@
+name: Manual Azure Deployment
+
+on:
+  push:
+    branches:
+      - main  # Change to the targeted branch name
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Add your specific build steps here if needed (e.g., npm run build)
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'probe-capstone295' # Put your Azure Web App name here
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .
