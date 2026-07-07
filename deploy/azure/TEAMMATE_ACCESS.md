@@ -29,6 +29,8 @@
 
 Brian’s GitHub login: **`briantwai`** — already a collaborator.
 
+**If a run fails with 409 Conflict:** two deploys ran at the same time. Wait ~2 minutes and **Re-run workflow** — the app is usually fine (check https://probe-capstone295.azurewebsites.net).
+
 ---
 
 ## Azure Portal (if needed)
