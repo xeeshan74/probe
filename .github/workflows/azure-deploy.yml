@@ -1,22 +1,31 @@
-name: Manual Azure Deployment
+name: Deploy PROBE to Azure
 
 on:
   push:
-    branches:
-      - main  # Change to the targeted branch name
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Add your specific build steps here if needed (e.g., npm run build)
+      - name: Build deploy package
+        run: |
+          zip -r deploy.zip \
+            app.py requirements.txt assessment_controller.py authorization.py \
+            chart_help.py finding_help.py charts.py config.py discovery.py dns_utils.py \
+            email_checks.py models.py page_classifier.py report_generator.py risk_engine.py \
+            storage.py tls_checks.py web_checks.py __init__.py utils .streamlit \
+            -x "*.pyc" -x "*__pycache__*"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'probe-capstone295' # Put your Azure Web App name here
+          app-name: probe-capstone295
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          package: deploy.zip
