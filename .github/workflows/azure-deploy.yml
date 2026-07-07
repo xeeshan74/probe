@@ -5,6 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Avoid 409 Conflict when two deploys hit Azure at once (e.g. merge + manual run).
+concurrency:
+  group: azure-probe-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
