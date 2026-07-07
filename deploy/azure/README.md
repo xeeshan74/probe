@@ -66,6 +66,14 @@ Include `.streamlit/config.toml` in the deploy zip (proxy/CORS settings for App 
 
 ---
 
+## CI/CD (GitHub Actions)
+
+Push to **`main`** or **Actions → Run workflow**. Secret `AZURE_WEBAPP_PUBLISH_PROFILE` is set on the repo.
+
+Teammates: use GitHub — **not** Entra ID. See [TEAMMATE_ACCESS.md](./TEAMMATE_ACCESS.md).
+
+---
+
 ## Add teammates (Contributor)
 
 Run once per teammate email (Brian, Abdul, Pauline):
